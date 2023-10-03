@@ -163,7 +163,7 @@ def Ah_over_Av(star):
 		ratio = 0.40
 	return(ratio)
 
-### Return first guess reference phase in each band (mean along rising branch):
+### Return first guess reference phase in each band (MARB = mean along rising branch):
 def first_guess_phases_MARB(star):
 	### Initialize first guess phases to 0 in the 3 filters:
 	phi_first_guess = {'F160W': 0, 'F475W': 0, 'F814W': 0}
@@ -1365,24 +1365,6 @@ def mag2flux(mag_value, band):
 ###
 def flux2mag(flux_value, band):
 	return(-2.5*np.log10(flux_value/F_vega[band]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
