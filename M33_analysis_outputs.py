@@ -342,15 +342,6 @@ def plot_output_dphase():
 	plt.show()
 
 ###
-def fit_PL_fixslope(XX, YY, eYY, fixed_slope):
-	popt, pcov = curve_fit(lambda X, B: fixed_slope*(X-1)+B, XX, YY, sigma=eYY)
-	perr = np.sqrt(np.diag(pcov))
-	slope, zp = fixed_slope, popt[0]
-	e_slope, e_zp = 0, perr[0]
-
-	return(zp, e_zp)
-
-###
 def gamma_M33(gradient_ref):
 
 	indices = [i for i in range(len(res)) if (res['cep'][i] not in outliers)]
@@ -443,7 +434,7 @@ def ACS_to_WFC3():
 	plt.title(' (log(g) < %.0f)     (%.0f < M < %.0f M$_{sun}$)       (%.0f < T < %.0f) '%(max_logg, min_mass, max_mass, min_T, max_T))
 	plt.show()
 	
-### Good map with colormap markers:
+### Map with colormap markers:
 def map_M33_HST():
 
 	color_map = plt.cm.get_cmap('viridis')
@@ -591,23 +582,6 @@ def full_data_table():
 			print('%s %s & %.5f & %.5f & %.3f & $%.3f_{\,(%.0f)}$ & $%.3f_{\,(%.0f)}$ & $%.3f_{\,(%.0f)}$ & $%.3f_{\,(%.0f)}$ & %.2f & %.3f & %s \\\\'
 				%(R['cep'][i], flag, M33[R['cep'][i]]['RA'], M33[R['cep'][i]]['DEC'], np.log10(R['period'][i]), R['H'][i], R['eH'][i]*1000, R['V'][i], R['eV'][i]*1000, R['I'][i], R['eI'][i]*1000, mhw, emhw*1000, d_kpc, delta_corr, samp_name))
 
-### 
-def table_for_Stefano():
-
-	file = root_dat + 'table_for_Stefano.dat'
-	first_line = 'cep  Per 	RA 	DEC 	mH	err_mH 	 \n'
-
-	with open(file, "w") as mf:
-		mf.write(first_line)
-		for i in range(len(res)):
-
-			X = res['cep'][i]
-
-			color_phatter = ufloat(res['V'][i], res['eV'][i]) - ufloat(res['I'][i], res['eI'][i])
-			color_sh0es   = 0.065 + 0.658*color_phatter
-			mHW = ufloat(res['H'][i], res['eH'][i]) - 0.386*color_sh0es
-
-			mf.write('%s 	%.6f 	%.6f 	%.6f 	%.3f 	%.3f    \n'%(X, M33[X]['period'], M33[X]['RA'], M33[X]['DEC'], mHW.nominal_value, mHW.std_dev))
 
 ### Use this function for optical Wesenheit PL relations:
 def PL_wvi():
@@ -649,20 +623,7 @@ def PL_wvi():
 	print(' Fixed slope: W_VI = (%.3f ± %.3f) logP + (%.3f ± %.3f) '%(-3.31, 0., zp_fix, e_zp_fix))
 	print('\n sigma = %.3f mag    chi2r = %.3f    N=%i   \n'%(sigma, chi2r, len(indices)))
 
-	### Abby's PL relation:
-	F555_abby = [ufloat(abby['V'][i],abby['eV'][i]) + 0.28*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))+0.020 for i in range(len(abby))]
-	F814_abby = [ufloat(abby['V'][i],abby['eV'][i]) - 0.47*(ufloat(abby['V'][i],abby['eV'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.035 for i in range(len(abby))]
-	logP_abby = [np.log10(abby['Period'][i]) for i in range(len(abby))]
-	mw_abby_uf = [F814_abby[i] - 1.3*(F555_abby[i]-F814_abby[i]) for i in range(len(abby))]
-	mw_abby, emw_abby = [x.nominal_value for x in mw_abby_uf], [np.sqrt((x.std_dev)**2 + 0.069**2) for x in mw_abby_uf]
-
-	popt_abby, pcov_abby = curve_fit(lambda X, B: -3.31*X+B, logP_abby, mw_abby, sigma=emw_abby)
-	perr_abby = np.sqrt(np.diag(pcov_abby))
-	slope_abby, zp_abby = -3.31, popt_abby[0]
-	e_slope_abby, e_zp_abby = 0, perr_abby[0]
-	sigma_abby = np.sqrt(sum( (np.array(mw_abby)-np.array([slope_abby*XX + zp_abby for XX in logP_abby]))**2 )/len(logP_abby))
-
-
+	
 	plt.figure(figsize=(10,5))
 	plt.subplots_adjust(left=0.06, right=0.99, top=0.98, bottom=0.10, hspace=0.1, wspace=0.3)
 
@@ -677,8 +638,6 @@ def PL_wvi():
 		yerr=[emw[i] for i in range(len(cep)) if samp_name[i]!='br'], fmt='o', color='k', markerfacecolor='darkblue', 
 		markeredgewidth=0.5, markersize=5, capsize=0, ecolor='darkblue', elinewidth=0.7, label='Gold sample')
 
-	plt.errorbar(logP_abby, mw_abby, yerr=emw_abby, fmt='o', color='darkorange', markerfacecolor='darkorange', markeredgewidth=0.5, markersize=5, capsize=0, ecolor='darkorange', elinewidth=0.7, label="Abby's Cepheids")
-
 	plt.xlabel('$\log P$ (days)', fontsize=11)
 	plt.ylabel('$m_{VI}^W$ (mag)', fontsize=11)
 	plt.gca().invert_yaxis()
@@ -689,77 +648,6 @@ def PL_wvi():
 
 	return(-3.31, 0., zp_abby, e_zp_abby)
 
-###
-def PL_wH_Abby():
-
-	indices = [i for i in range(len(res)) if (res['sample'][i] in ['go', 'si', 'sg', 'br']) and (res['cep'][i] not in outliers)]
-	cep           = [res['cep'][i]                                                         for i in indices]
-	chi2          = [res['chi2'][i]                                                        for i in indices]
-	logP          = [np.log10(res['period'][i])                                            for i in indices]
-	color_phatter = [ufloat(res['V'][i], res['eV'][i]) - ufloat(res['I'][i], res['eI'][i]) for i in indices]
-	color_sh0es   = [0.065 + 0.658*col for col in color_phatter]
-	Hmag          = [res['H'][i]                                                           for i in indices]
-	eHmag         = [res['eH'][i]                                                          for i in indices]
-	samp_name     = [res['sample'][i]                                                      for i in indices]
-	delta_mag     = [M33[res['cep'][i]]['delta_mag']                                       for i in indices]
-
-	### WH from HST/WFC3 magnitudes, random-phase corrected:	
-	wH_sh0es   = [ufloat(Hmag[i], eHmag[i]) + delta_mag[i] - 0.386*color_sh0es[i] for i in range(len(indices))]
-	mH, emH = [y.nominal_value for y in wH_sh0es], [y.std_dev for y in wH_sh0es]
-	### Adding intrinsic scatter of the PL to WH errors (see Li+ Table 3, footnote):
-	emH = [np.sqrt(em**2 + 0.069**2) for em in emH]
-
-	### Fixed slope (R19):
-	popt_fix, pcov_fix = curve_fit(lambda X, B: -3.26*X+B, logP, mH, sigma=emH)
-	perr_fix = np.sqrt(np.diag(pcov_fix))
-	slope_fix, zp_fix = -3.26, popt_fix[0]
-	e_slope_fix, e_zp_fix = 0, perr_fix[0]
-	print('PL (fixed slope): %.3f ± %.3f \n'%(zp_fix, e_zp_fix))
-
-	fit = np.array([slope_fix*XX + zp_fix for XX in logP])
-	chi2 = sum([(fit[i] - mH[i])**2/(emH[i]**2) for i in range(len(indices))])  
-	chi2r = chi2/(len(indices)-2)
-	sigma = np.sqrt(sum( (np.array(mH)-np.array([slope_fix*XX + zp_fix for XX in logP]))**2 )/len(indices))
-	print(' ( chi2_dof = %.3f ) \n'%chi2r)
-
-	### Abby's PL relation:
-	F160_abby = [ufloat(abby['H'][i],abby['eH'][i]) + 0.25*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.030 for i in range(len(abby))]
-	F555_abby = [ufloat(abby['V'][i],abby['eV'][i]) + 0.28*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))+0.020 for i in range(len(abby))]
-	F814_abby = [ufloat(abby['V'][i],abby['eV'][i]) - 0.47*(ufloat(abby['V'][i],abby['eV'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.035 for i in range(len(abby))]
-	logP_abby = [np.log10(abby['Period'][i]) for i in range(len(abby))]
-	mH_abby_uf = [F160_abby[i] - 0.386*(F555_abby[i]-F814_abby[i]) for i in range(len(abby))]
-	mH_abby, emH_abby = [x.nominal_value for x in mH_abby_uf], [np.sqrt((x.std_dev)**2 + 0.069**2) for x in mH_abby_uf]
-
-	popt_abby, pcov_abby = curve_fit(lambda X, B: -3.26*X+B, logP_abby, mH_abby, sigma=emH_abby)
-	perr_abby = np.sqrt(np.diag(pcov_abby))
-	slope_abby, zp_abby = -3.26, popt_abby[0]
-	e_slope_abby, e_zp_abby = 0, perr_abby[0]
-	sigma_abby = np.sqrt(sum( (np.array(mH_abby)-np.array([slope_abby*XX + zp_abby for XX in logP_abby]))**2 )/len(logP_abby))
-
-	plt.figure(figsize=(10,5))
-	plt.subplots_adjust(left=0.06, right=0.99, top=0.98, bottom=0.10, hspace=0.1, wspace=0.3)
-
-	# plt.plot(xfine, slope_fix*(xfine)+zp_fix,   '-', linewidth=1.2, color='darkblue', label='Breuval+23: $m_H^W = %.2f \, \log P + %.3f_{\pm %.3f}$ ($\sigma = %.2f$)'%(slope_fix, zp_fix, e_zp_fix, sigma))
-	plt.plot(xfine, slope_abby*(xfine)+zp_abby, '-', linewidth=1.2, color='orange',   label='Lee+22:       $m_H^W = %.2f \, \log P + %.3f_{\pm %.3f}$ ($\sigma = %.2f$)'%(slope_abby, zp_abby, e_zp_abby, sigma_abby))
-
-	# plt.errorbar([logP[i] for i in range(len(cep)) if samp_name[i]=='br'], [mH[i] for i in range(len(cep)) if samp_name[i]=='br'], 
-	# 	yerr=[emH[i] for i in range(len(cep)) if samp_name[i]=='br'], fmt='o', color='lightgray', markerfacecolor='lightgray', 
-	# 	alpha=1., markeredgewidth=0.5, markersize=5, capsize=0, ecolor='lightgray', elinewidth=0.7, label='Silver sample')
-	# plt.errorbar([logP[i] for i in range(len(cep)) if samp_name[i]!='br'], [mH[i] for i in range(len(cep)) if samp_name[i]!='br'], 
-	# 	yerr=[emH[i] for i in range(len(cep)) if samp_name[i]!='br'], fmt='o', color='k', markerfacecolor='darkblue', 
-	# 	markeredgewidth=0.5, markersize=5, capsize=0, ecolor='darkblue', elinewidth=0.7, label='Gold sample')
-
-	plt.errorbar(logP_abby, mH_abby, yerr=emH_abby, fmt='o', color='darkorange', markerfacecolor='darkorange', markeredgewidth=0.5, markersize=5, capsize=0, ecolor='darkorange', elinewidth=0.7, label="Abby's Cepheids")
-
-	plt.xlabel('$\log P$ (days)', fontsize=11)
-	plt.ylabel('$m_H^W$ (mag)', fontsize=11)
-	plt.gca().invert_yaxis()
-	plt.xlim(0.45, 2.2)
-	plt.ylim(20.6, 14)
-	plt.legend(fontsize=11, loc='upper left', fancybox=True, shadow=True)
-	plt.show()
-
-	return(-3.26, 0., zp_abby, e_zp_abby)
 
 ### 
 def distance_from_Wvi(zp_wvi, e_zp_wvi):
@@ -782,169 +670,7 @@ def distance_from_Wvi(zp_wvi, e_zp_wvi):
 
 	print('\n New M33 distance (Wvi): %.3f ± %.3f mag'%(DM_M33, e_DM_M33))
 
-### 
-def make_tables_for_adam():
-	### Abby's data:
-	datafile_abby = '/Users/louise/Desktop/SH0ES/2022-09-19_M33_clusters/Abby_Lee_Cepheids/data_abby.dat'
-	first_line_abby = 'period  F555W 	eF555W 	F814W	eF814W      F160W 	eF160W 	 \n'
-	with open(datafile_abby,"w") as mf:
-		mf.write(first_line_abby)
-		for i in range(len(abby)):
-			F160 = ufloat(abby['H'][i],abby['eH'][i]) + 0.25*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.030
-			F555 = ufloat(abby['V'][i],abby['eV'][i]) + 0.28*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))+0.020
-			F814 = ufloat(abby['V'][i],abby['eV'][i]) - 0.47*(ufloat(abby['V'][i],abby['eV'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.035
-			mf.write('%.4f 	%.3f 	%.3f 	%.3f 	%.3f 	%.3f 	%.3f 	\n'
-				%(abby['Period'][i], F555.nominal_value, F555.std_dev, F814.nominal_value, F814.std_dev, F160.nominal_value, F160.std_dev ))
 
-	### Louise's data:
-	datafile_louise = '/Users/louise/Desktop/SH0ES/2022-09-19_M33_clusters/Abby_Lee_Cepheids/data_louise.dat'
-	first_line_louise = 'cep 	period  F475W 	eF475W 	F814W	eF814W      F160W 	eF160W 	 \n'
-	with open(datafile_louise,"w") as mf:
-		mf.write(first_line_louise)
-		for i in range(len(res)):
-			if res['cep'][i] not in outliers:
-				mf.write('%s 	%.4f   		%.3f 	%.3f 	%.3f 	%.3f 	%.3f 	%.3f	\n'
-					%(res['cep'][i], res['period'][i], res['V'][i], res['eV'][i], res['I'][i], res['eI'][i], res['H'][i], res['eH'][i]  ))
-
-
-### Reproducing Abby's Fig. 11 (ground PLs):
-def PLs_Abby_Fig11():
-
-	slope_M12  = {'V': -2.77, 'I': -2.97, 'J': -3.15, 'H': -3.23, 'K': -3.27}
-	zp_M12_MW  = {'V': -4.08, 'I': -4.77, 'J': -5.33, 'H': -5.65, 'K': -5.70}
-	zp_M12_LMC = {'V': 14.81, 'I': 13.93, 'J': 13.26, 'H': 12.90, 'K': 12.80}
-
-	xf = np.linspace(0.85, 2.15, 100)
-
-	zp_V, e_zp_V = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['V']], [ey+0.001 for ey in abby['eV']], slope_M12['V'])
-	zp_I, e_zp_I = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['I']], [ey+0.001 for ey in abby['eI']], slope_M12['I'])
-	zp_J, e_zp_J = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['J']], [ey+0.001 for ey in abby['eJ']], slope_M12['J'])
-	zp_H, e_zp_H = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['H']], [ey+0.001 for ey in abby['eH']], slope_M12['H'])
-
-	zp_V_unwt, e_zp_V = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['V']], [0.001 for ey in abby['eV']], slope_M12['V'])
-	zp_I_unwt, e_zp_I = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['I']], [0.001 for ey in abby['eI']], slope_M12['I'])
-	zp_J_unwt, e_zp_J = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['J']], [0.001 for ey in abby['eJ']], slope_M12['J'])
-	zp_H_unwt, e_zp_H = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['H']], [0.001 for ey in abby['eH']], slope_M12['H'])
-
-	plt.figure(figsize=(8,8.5))
-	plt.subplots_adjust(left=0.08, right=0.98, top=0.98, bottom=0.08, hspace=0.1, wspace=0.3)
-
-	plt.plot(xf, slope_M12['H']*(xf-1)+zp_H -2, '-', linewidth=1.2, color='purple', label='$m_H = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_H, e_zp_H, -slope_M12['H']))
-	plt.plot(xf, slope_M12['J']*(xf-1)+zp_J -1, '-', linewidth=1.2, color='red',    label='$m_J = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_J, e_zp_J, -slope_M12['J']))
-	plt.plot(xf, slope_M12['I']*(xf-1)+zp_I   , '-', linewidth=1.2, color='green',  label='$m_I = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_I, e_zp_I, -slope_M12['I']))
-	plt.plot(xf, slope_M12['V']*(xf-1)+zp_V +1, '-', linewidth=1.2, color='blue',   label='$m_V = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_V, e_zp_V, -slope_M12['V']))
-
-	# plt.plot(xf, slope_M12['H']*(xf-1)+zp_H_unwt -2, '--', linewidth=1.2, color='k', label='Unweighted fits'  )
-	# plt.plot(xf, slope_M12['H']*(xf-1)+zp_H_unwt -2, '--', linewidth=1.2, color='purple', label='$m_H = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_H_unwt, e_zp_H, -slope_M12['H']) )
-	# plt.plot(xf, slope_M12['J']*(xf-1)+zp_J_unwt -1, '--', linewidth=1.2, color='red',    label='$m_J = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_J_unwt, e_zp_J, -slope_M12['J']) )
-	# plt.plot(xf, slope_M12['I']*(xf-1)+zp_I_unwt   , '--', linewidth=1.2, color='green',  label='$m_I = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_I_unwt, e_zp_I, -slope_M12['I']) )
-	# plt.plot(xf, slope_M12['V']*(xf-1)+zp_V_unwt +1, '--', linewidth=1.2, color='blue',   label='$m_V = %.3f_{± %.3f} - %.2f (\log P-1)$'%(zp_V_unwt, e_zp_V, -slope_M12['V']) )
-
-	plt.errorbar([np.log10(x) for x in abby['Period']], [y-2 for y in abby['H']], yerr=abby['eH'], fmt='o', color='purple', markerfacecolor='purple', markeredgewidth=0.5, markersize=7, capsize=0, ecolor='purple', elinewidth=0.7, label='$H-2$')
-	plt.errorbar([np.log10(x) for x in abby['Period']], [y-1 for y in abby['J']], yerr=abby['eJ'], fmt='o', color='red', markerfacecolor='red', markeredgewidth=0.5, markersize=7, capsize=0, ecolor='red', elinewidth=0.7, label='$J-1$')
-	plt.errorbar([np.log10(x) for x in abby['Period']], [y   for y in abby['I']], yerr=abby['eI'], fmt='o', color='green', markerfacecolor='green', markeredgewidth=0.5, markersize=7, capsize=0, ecolor='green', elinewidth=0.7, label='$I$')
-	plt.errorbar([np.log10(x) for x in abby['Period']], [y+1 for y in abby['V']], yerr=abby['eV'], fmt='o', color='blue', markerfacecolor='blue', markeredgewidth=0.5, markersize=7, capsize=0, ecolor='blue', elinewidth=0.7, label='$V+1$')
-
-	plt.xlabel('$\log P$ (days)', fontsize=12)
-	plt.ylabel('apparent magnitude (mag)', fontsize=12)
-	plt.gca().invert_yaxis()
-	plt.xlim(0.95, 1.8)
-	plt.ylim(23, 12)
-	plt.legend(fontsize=10, loc='upper left', fancybox=True, shadow=True)
-	plt.show()
-
-### Reproducing Abby's Fig. 13 (intercepts vs lambda): 
-def intercepts_Abby():
-
-	slope_M12  = {'V': -2.77, 'I': -2.97, 'J': -3.15, 'H': -3.23, 'K': -3.27}
-	zp_M12_MW  = {'V': -4.08, 'I': -4.77, 'J': -5.33, 'H': -5.65, 'K': -5.70}
-	zp_M12_LMC = {'V': 14.81, 'I': 13.93, 'J': 13.26, 'H': 12.90, 'K': 12.80}
-
-	inv_wavl =  {'V': 1./0.55,  'I': 1./0.80,  'J': 1./1.24,  'H': 1./1.66,  'K': 1./2.16 }
-
-	xf = np.linspace(0.85, 2.15, 100)
-	dm_LMC = 18.479
-	
-	zp_V, e_zp_V = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['V']], [ey+0.001 for ey in abby['eV']], slope_M12['V'])
-	zp_I, e_zp_I = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['I']], [ey+0.001 for ey in abby['eI']], slope_M12['I'])
-	zp_J, e_zp_J = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['J']], [ey+0.001 for ey in abby['eJ']], slope_M12['J'])
-	zp_H, e_zp_H = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['H']], [ey+0.001 for ey in abby['eH']], slope_M12['H'])
-
-	zp_V_unwt, e_zp_V = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['V']], [0.001 for ey in abby['eV']], slope_M12['V'])
-	zp_I_unwt, e_zp_I = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['I']], [0.001 for ey in abby['eI']], slope_M12['I'])
-	zp_J_unwt, e_zp_J = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['J']], [0.001 for ey in abby['eJ']], slope_M12['J'])
-	zp_H_unwt, e_zp_H = fit_PL_fixslope([np.log10(x) for x in abby['Period']], [y for y in abby['H']], [0.001 for ey in abby['eH']], slope_M12['H'])
-
-	beta_MW_unwt = [zp_V_unwt-zp_M12_MW['V'], zp_I_unwt-zp_M12_MW['I'], zp_J_unwt-zp_M12_MW['J'], zp_H_unwt-zp_M12_MW['H']]
-	beta_MW_wt   = [zp_V     -zp_M12_MW['V'], zp_I     -zp_M12_MW['I'], zp_J     -zp_M12_MW['J'], zp_H     -zp_M12_MW['H']]
-
-	beta_LMC_unwt = [zp_V_unwt-zp_M12_LMC['V']+dm_LMC, zp_I_unwt-zp_M12_LMC['I']+dm_LMC, zp_J_unwt-zp_M12_LMC['J']+dm_LMC, zp_H_unwt-zp_M12_LMC['H']+dm_LMC]
-	beta_LMC_wt   = [zp_V     -zp_M12_LMC['V']+dm_LMC, zp_I     -zp_M12_LMC['I']+dm_LMC, zp_J     -zp_M12_LMC['J']+dm_LMC, zp_H     -zp_M12_LMC['H']+dm_LMC]
-
-	plt.figure(figsize=(7,5))
-	plt.subplots_adjust(left=0.10, right=0.98, top=0.98, bottom=0.10, hspace=0.1, wspace=0.3)
-
-	plt.plot([inv_wavl[fil] for fil in inv_wavl.keys()], [25.110, 24.890, 24.850, 24.780, 24.725], '-', color='k', linewidth=0.8)
-	plt.plot([inv_wavl[fil] for fil in inv_wavl.keys()], [25.110, 24.890, 24.850, 24.780, 24.725], 'o', color='k', markerfacecolor='k', markeredgewidth=0.5, markersize=8, label='Lee+2022')
-
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_MW_unwt, '-', color='red', linewidth=0.8)
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_MW_wt,   '-', color='red', linewidth=0.8)
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_MW_unwt, 'x', color='red', markerfacecolor='red', markeredgewidth=2., markersize=7, label='MW unweighted PL fit')
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_MW_wt,   's', color='red', markerfacecolor='red', markeredgewidth=1., markersize=7, label='MW weighted PL fit')
-
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_LMC_unwt, '-', color='blue', linewidth=0.8)
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_LMC_wt,   '-', color='blue', linewidth=0.8)
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_LMC_unwt, 'x', color='blue', markerfacecolor='blue', markeredgewidth=2., markersize=7, label='LMC unweighted PL fit')
-	plt.plot([inv_wavl[fil] for fil in ['V', 'I', 'J', 'H']], beta_LMC_wt,   's', color='blue', markerfacecolor='blue', markeredgewidth=1., markersize=7, label='LMC weighted PL fit')
-
-	plt.xlabel('$1 / \lambda$ ($\mu m$)', fontsize=12)
-	plt.ylabel('$\mu$ (mag)', fontsize=12)
-	plt.xlim(0., 2.3)
-	plt.ylim(24.5, 25.2)
-	plt.legend(fontsize=11, loc='upper left', fancybox=True, shadow=True)
-	plt.show()
-
-###
-def Wesenheit_Abby_ground_to_HST(wesenheit):
-
-	### Abby's data:
-	F160_abby = [ufloat(abby['H'][i],abby['eH'][i]) + 0.25*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.030 for i in range(len(abby))]
-	F555_abby = [ufloat(abby['V'][i],abby['eV'][i]) + 0.28*(ufloat(abby['J'][i],abby['eJ'][i]) - ufloat(abby['H'][i],abby['eH'][i]))+0.020 for i in range(len(abby))]
-	F814_abby = [ufloat(abby['V'][i],abby['eV'][i]) - 0.47*(ufloat(abby['V'][i],abby['eV'][i]) - ufloat(abby['H'][i],abby['eH'][i]))-0.035 for i in range(len(abby))]
-	logP_abby = [np.log10(abby['Period'][i]) for i in range(len(abby))]
-
-	slope_MW = -3.299
-	
-	plt.figure(figsize=(8,5))
-	plt.subplots_adjust(left=0.09, right=0.98, top=0.98, bottom=0.10, hspace=0.1, wspace=0.3)
-
-	### NIR vs Optical Wesenheit:
-	if wesenheit == 'WH':
-		mw_uf = [F160_abby[i] - 0.386*(F555_abby[i]-F814_abby[i]) for i in range(len(abby))]
-		plt.ylabel('$m_{H}^W$ (mag)', fontsize=11)
-		col = 'darkred'
-
-	elif wesenheit == 'WVI':
-		mw_uf = [F814_abby[i] - 1.19*(F555_abby[i]-F814_abby[i]) for i in range(len(abby))]
-		plt.ylabel('$m_{VI}^W$ (mag)', fontsize=11)
-		col = 'darkblue'
-
-	mw, emw = [x.nominal_value for x in mw_uf], [np.sqrt((x.std_dev)**2 + 0.07**2) for x in mw_uf]
-	plt.errorbar(logP_abby, mw, yerr=emw, fmt='o', color='k', markerfacecolor=col, markeredgewidth=0.5, markersize=6, capsize=0, ecolor=col, elinewidth=0.7)
-
-	popt, pcov = curve_fit(lambda X, B: slope_MW*(X-1)+B, logP_abby, mw)
-	perr = np.sqrt(np.diag(pcov))
-	slope, zp = slope_MW, popt[0]
-	e_slope, e_zp = 0, perr[0]
-	sigma = np.sqrt(sum( (np.array(mw)-np.array([slope*(XX-1) + zp for XX in logP_abby]))**2 )/len(logP_abby))
-
-	plt.plot(xfine, slope_MW*(xfine-1)+zp, '-', linewidth=1.2, color=col, label='$m_{%s}^W = %.3f \, (\log P -1) + %.3f_{\pm %.3f}$ ($\sigma = %.2f$)'%(wesenheit[1:], slope_MW, zp, e_zp, sigma))
-
-	plt.xlabel('$\log P$ (days)', fontsize=11)
-	plt.gca().invert_yaxis()
-	plt.xlim(0.9, 1.8)
-	plt.legend(fontsize=11, loc='upper left', fancybox=True, shadow=True)
-	plt.show()
 
 ###
 def M33_reddening():
@@ -961,27 +687,6 @@ def M33_reddening():
 	plt.xlabel('$E(B-V)$ (mag)')
 	plt.ylabel('N')
 	plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
